@@ -1,1 +1,4 @@
 %% %这个脚本用来仿真NA=0的白光干涉过程
+clear;
+close all;
+clc;
