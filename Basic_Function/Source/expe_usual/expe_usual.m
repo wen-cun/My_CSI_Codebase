@@ -9,7 +9,7 @@ function vsk=expe_usual(vk0)
 spectrm_data=readmatrix("C:\Users\lenovo\Desktop\MATLAB\My_CSI_Codebase\Basic_Function\Source\expe_usual\LightSource.txt");%读取光谱数据
 
 spectrm_data(:,2)=spectrm_data(:,2)-mean(spectrm_data(end-9:end,2),'omitnan');%强度列减去均值
-spectrm_data(:,2)=spectrm_data(:,2)./max(spectrm_data(:,2));%强度列最大值
+spectrm_data(:,2)=spectrm_data(:,2)./max(spectrm_data(:,2));%归一化
 
 spectrm_data(:,1)=1./(spectrm_data(:,1)/1000);%波长列先转为um制再取波数
 
