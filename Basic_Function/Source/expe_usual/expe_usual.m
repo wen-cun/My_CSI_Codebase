@@ -1,7 +1,10 @@
 function vsk=expe_usual(vk0)
 %生成指定查询波数点的实验常用光源光谱强度
-%输入vk0 为查询点的波数
-%输出vsk 为查询点的强度
+
+%输入vk0 为查询点的波数,  变量类型： double型vector
+
+%输出vsk 为查询点的强度，与输入的vk0同维度，  变量类型 double型vector
+
 %  例： 
 %    vk0=1./(0.3:0.001:0.8)';
 %    vsk=expe_usual(vk0);
