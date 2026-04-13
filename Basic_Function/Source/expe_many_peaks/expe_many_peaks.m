@@ -16,5 +16,5 @@ spectrm_data(:,2)=spectrm_data(:,2)./max(spectrm_data(:,2));%归一化
 
 spectrm_data(:,1)=1./(spectrm_data(:,1)/1000);%波长列先转为um制再取波数
 
-vsk=interp1(spectrm_data(:,1),spectrm_data(:,2),vk0,'spline');%三次样条插值
+vsk=interp1(spectrm_data(:,1),spectrm_data(:,2),vk0,'spline',0);%三次样条插值
 end
