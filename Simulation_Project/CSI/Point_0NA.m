@@ -3,8 +3,8 @@ clear;
 close all;
 clc;
 %% 定义光源
-% z_samp=0.0719;%PZT单次移动间隔，um制
-z_samp=0.025;%PZT单次移动间隔，um制
+z_samp=0.0719;%PZT单次移动间隔，um制
+% z_samp=0.05;%PZT单次移动间隔，um制
 
 N_half = round(10 / z_samp); % 计算单侧点数
 z_scan = (-N_half : N_half) * z_samp; % 这样生成的数组中心绝对是 0
