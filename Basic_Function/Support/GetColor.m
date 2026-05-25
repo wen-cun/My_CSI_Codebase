@@ -29,7 +29,7 @@ switch ColorNum
     case 3
         switch ColorType
             case 1
-                Color=[166 064 054;70 130 80;065 130 164]/255;
+                Color=[166 064 054;065 130 164;70 130 80]/255;
             case 2
                 Color=[106 97 141;214 125 173;250 216 151]/255;
             otherwise
