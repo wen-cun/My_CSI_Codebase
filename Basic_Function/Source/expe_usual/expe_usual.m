@@ -13,6 +13,20 @@ spectrm_data=readmatrix("C:\Users\lenovo\Desktop\MATLAB\My_CSI_Codebase\Basic_Fu
 
 spectrm_data(:,2)=spectrm_data(:,2)-mean(spectrm_data(end-9:end,2),'omitnan');%强度列减去均值
 spectrm_data(:,2)=spectrm_data(:,2)./max(spectrm_data(:,2));%归一化
+lam0=sum(spectrm_data(:,1).*spectrm_data(:,2))./sum(spectrm_data(:,2));
+
+% Color=GetColor(2,1);
+% figure();
+% plot(spectrm_data(:,1),spectrm_data(:,2),'LineWidth',1.5,'Color',Color(1,:));
+% hold on;
+
+tau = 75;%超高斯窗标准差
+order = 3;%超高斯窗阶数
+window = exp(-((spectrm_data(:,1)-lam0).^2/(2*tau^2)).^order);
+
+% plot(spectrm_data(:,1),window+1,'--','LineWidth',1.5,'Color',Color(2,:));
+
+spectrm_data(:,2)=spectrm_data(:,2).*window; %超高斯窗滤波
 
 spectrm_data(:,1)=1./(spectrm_data(:,1)/1000);%波长列先转为um制再取波数
 
