@@ -14,7 +14,8 @@ fre = fre(fre> 2/1.1);%只选取大于1.1的部分；
 vk0 = (fre /2)';
 
 vsk_ini = gen_lightsource(vk0,1);%获取光源信号
-vsk = vsk_ini./(vk0.^2);%波长波数域转换
+vsk = vsk_ini./(vk0.^2); %波长波数域转换
+vsk = vsk./(max(abs(vsk))); %归一化光谱
 k0 = sum(vk0 .* vsk) / sum(vsk); %0NA对应的光谱中心
 
 figure();
