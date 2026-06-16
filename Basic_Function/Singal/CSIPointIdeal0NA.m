@@ -21,7 +21,7 @@ function signal=CSIPointIdeal0NA(vk0,vsk,A1,A2,z_scan,sample_dis)
 %     A1=1;
 %     A2=2;
 %     sample_dis=3;
-%     signal=CSIPointIdeal0NA(vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,z_scan,sample_dis)
+%     signal=CSIPointIdeal0NA(vk0,vsk,A1,A2,z_scan,sample_dis)
 
 vk0_mat = repmat(vk0,1,length(z_scan));
 vsk_mat = repmat(vsk,1,length(z_scan)); %将列向量的光谱数据复制为多列的矩阵
