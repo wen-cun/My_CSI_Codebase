@@ -2,7 +2,7 @@ function [r_te,r_tm]=CalcSampleAmplitudeReflectivity(vk0,theta_array,sample_stru
 % 这个脚本用来计算所有波长，所有角度下的样品振幅反射率
 
 % 输入 vk0 为光源的波数序列，double型M*1维变量
-% 输入 theta_array 为角度序列，double型N*1维变量
+% 输入 theta_array 为角度序列，double型1*N维变量
 % 输入 sample_stru 为膜层结构，K*2型元胞数组变量，K为总介质个数，其中第一列为子胞为膜层结构介质的名称，第二列为该膜层介质的厚度
 
 % 输出 r_te 为TE偏振下的振幅反射率，complex double型M*N维变量
