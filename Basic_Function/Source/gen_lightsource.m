@@ -21,7 +21,7 @@ switch type
     case 4
         %模拟高斯光源
         mu=1/0.55;
-        sigma=0.05;
+        sigma=0.1;
         SNR=inf;
         vsk=simu_gauss(vk0,mu,sigma,SNR);
     otherwise
