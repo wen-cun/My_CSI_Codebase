@@ -8,7 +8,7 @@ function signal=SDIPointIdealNA(vk0,vsk,theta_array,A1,A2,sample_dis)
 % 输入A2为参考镜振幅反射率, complex double型1×1维向量
 % 输入sample_dis为样品与参考镜的距离, double型1×1维向量
 
-%输出signal为SDI信号， double 型N×1维向量
+%输出signal为SDI信号， double 型N×1维向量，等波长空间光谱分布
 
 %     例：
 %     lam_peri = 3e-4; %波长采样周期,um制
@@ -33,6 +33,7 @@ theta_mat = repmat(theta_array,length(vk0),1);
 inter = (abs(A1)^2+abs(A2)^2+2*real(A1*conj(A2)*...
     exp(1i*4*pi.*vk0_mat.*sample_dis.*cos(theta_mat)))).*sin(theta_mat).*cos(theta_mat);
 signal=vsk.*sum(inter,2);%每一行求和为调制项，光源直接乘以调制项
+signal = signal.*vk0.^2; %将信号转至波长空间
 signal = signal./max(abs(signal),[],'all'); %信号归一化
 end
 
