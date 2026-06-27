@@ -9,7 +9,7 @@ function signal=SDIPointUnpolar0NA(vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,sample_dis)
 % 输入r_Sm为参考镜TM偏振反射率, complex double型N×M维向量，N为光谱采样点个数,M为角度序列的长度
 % 输入sample_dis为样品与参考镜的距离, double型1×1维向量
 
-%输出signal为SDI信号， double 型N×1维向量
+%输出signal为SDI信号， double 型N×1维向量，等波长空间光谱分布
 
 %     例：
 %     lam_peri = 3e-4; %波长采样周期,um制
@@ -35,6 +35,7 @@ vk0_mat = vk0; %光谱数据保持不变
 inter=abs(r_Se).^2+abs(r_Sm).^2+abs(r_Me).^2+abs(r_Mm).^2+...
     2*real((r_Se.*conj(r_Me)+r_Sm.*conj(r_Mm)).*exp(1i*4*pi.*vk0_mat.*sample_dis));
 signal = vsk.*inter; %光源直接乘以调制项
+signal = signal.*vk0.^2; %将信号转至波长空间
 signal = signal./max(abs(signal),[],'all'); %信号归一化
 end
 

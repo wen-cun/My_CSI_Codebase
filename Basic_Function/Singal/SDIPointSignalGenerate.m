@@ -12,7 +12,7 @@ function signal=SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_arra
 % 输入sample_dis为样品与参考镜的距离, double型1×1维向量
 % 输入system_pol为系统的偏振状态
 
-%输出signal为CSI信号， double 型N×1维向量
+%输出signal为CSI信号， double 型N×1维向量，等波长空间光谱分布
 
 
 %     例：
