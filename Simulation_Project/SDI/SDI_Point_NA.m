@@ -51,24 +51,16 @@ plot(lam,signal,'LineWidth',1.5,'Color',GetColor(1,1));
 defaultAxes(2);
 xlabel('$\lambda$/$\mu m$','Interpreter','latex');
 
+
 %信号加高斯白噪声
 SNR = 40; %40dB的噪声
 signal = awgn(signal,SNR,'measured');
 signal = signal/max(abs(signal)); %归一化
 
-% figure();
-% plot(lam,signal,'LineWidth',1.5,'Color',GetColor(1,1));
-% defaultAxes(2);
-% xlabel('$\lambda$/$\mu m$','Interpreter','latex'); 
-Color=GetColor(2,1);
 figure();
-plot(lam,signal,'LineWidth',1.5,'Color',Color(1,:));
-hold on;
-plot(lam,vsk_ini,'--','LineWidth',1.5,'Color',Color(2,:));
-hold off;
+plot(lam,signal,'LineWidth',1.5,'Color',GetColor(1,1));
 defaultAxes(2);
-legend('Singal','Source','EdgeColor','none');
-xlabel('$\lambda$/$\mu m$','Interpreter','latex');
+xlabel('$\lambda$/$\mu m$','Interpreter','latex'); 
 
 %% 求解调制项
 % interD = (signal+eps)./(vsk_ini+eps);
