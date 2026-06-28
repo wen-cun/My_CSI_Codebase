@@ -37,9 +37,7 @@ y_cho = interD(valid);
 weight = vsk_ini(valid).^2; %将光谱数据强度当做权重
 weight = weight./ max(weight); %权重归一化
 
-tic;
 [fitResult, gof] = fit(x_cho,y_cho,'fourier1','Weights',weight);
-toc;
 coeff = coeffvalues(fitResult);
 
 c = sqrt(1-NA^2);
