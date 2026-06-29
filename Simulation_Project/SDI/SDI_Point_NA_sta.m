@@ -25,7 +25,7 @@ sample_stru = {'Si',inf}; %样品结构
 [r_Me,r_Mm] = CalcMirrorAmplitudeReflectivity(vk0,theta_array); %计算参考镜TE场、TM场反射率号
 %% 选择偏振模式，生成白光干涉信号
 system_pol = 'unpolar';%非偏振模式
-sample_dis=5;
+sample_dis=6;
 signal=SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,sample_dis,system_pol);
 signal_pur=signal;
 
