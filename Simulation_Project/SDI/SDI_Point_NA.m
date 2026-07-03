@@ -41,9 +41,20 @@ sample_stru = {'Si',inf}; %样品结构
 [r_Se,r_Sm] = CalcSampleAmplitudeReflectivity(vk0,theta_array,sample_stru); %计算样品TE场、TM场反射率
 %% 参考镜反射率
 [r_Me,r_Mm] = CalcMirrorAmplitudeReflectivity(vk0,theta_array); %计算参考镜TE场、TM场反射率号
-%% 选择偏振模式，生成白光干涉信号
+
+C=angle((r_Se.*conj(r_Me)+r_Sm.*conj(r_Mm))); %判断干涉项的相位是否随波长、角度变化明显
+[theta_array_surf,vk0_surf]=meshgrid(theta_array,vk0);
+figure();
+
+surf(theta_array_surf,vk0_surf,C);
+shading interp;
+defaultAxes(3);
+defaultColor(1);
+ylabel('k/$\mu m^{-1}$','Interpreter','latex');
+xlabel('$\theta$/rad','Interpreter','latex');
+%% 选择偏振模式，生成光谱干涉信号
 system_pol = 'unpolar';%非偏振模式
-sample_dis=6;
+sample_dis = 0;
 signal=SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,sample_dis,system_pol);
 
 figure();
@@ -114,34 +125,55 @@ disp(['预设高度h:',num2str(sample_dis)]);
 disp(['粗定位法:',num2str(z_coa)]);
 %% 精确定位
 tic;
-if gof.rsquare<=0.75
-    warning('粗定位拟合效果较差，已改为粗细网格搜索法');
-    z_add = 2.5; %扫描的上范围
-    z_min = max(z_coa-z_add,0); %搜索的下限
-    z_max = z_coa+z_add; %搜索的上限
-    z_peri = 5e-2; %50nm采样
-    z_gra = z_min:z_peri:z_max; %搜索的区间
-    cost = nan*ones(size(z_gra)); %预先分配内存
-    for ii=1:length(z_gra)
-        signal_gra = SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,z_gra(ii),system_pol); %计算信号
-        cost(ii) = sum(abs(signal(valid)-signal_gra(valid)).^2,'all');%计算误差
-    end
-    [~,index]=min(cost);
-    figure();
-    plot(z_gra,cost,'LineWidth',1.5,'Color',Color(1,:));
-    hold on;
-    scatter(z_gra(index),cost(index),25,Color(2,:),'filled');
-    hold off;
-    defaultAxes(2);
-    xlabel('z/$\mu$ m','Interpreter','latex');
-    z_coa=z_gra(index); %粗网格修正粗定位结果
-    disp(['粗网格拟合法:',num2str(z_coa)]);
-end
-z_add = 0.5; %扫描的上下范围
+z_add = 2.5; %扫描的上范围
 z_min = max(z_coa-z_add,0); %搜索的下限
 z_max = z_coa+z_add; %搜索的上限
-z_peri = 1e-3; %1nm采样
+z_peri = 5e-2; %50nm采样
 z_gra = z_min:z_peri:z_max; %搜索的区间
+cost = nan*ones(size(z_gra)); %预先分配内存
+for ii=1:length(z_gra)
+    signal_gra = SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,z_gra(ii),system_pol); %计算信号
+    cost(ii) = sum(abs(signal(valid)-signal_gra(valid)).^2,'all');%计算误差
+end
+[~,index]=min(cost);
+
+z_coa_pos=z_gra(index); %粗网格修正粗定位结果
+figure();
+plot(z_gra,cost,'LineWidth',1.5,'Color',Color(1,:));
+hold on;
+scatter(z_gra(index),cost(index),25,Color(2,:),'filled');
+hold off;
+defaultAxes(2);
+xlabel('z/$\mu$ m','Interpreter','latex');
+
+z_minus_min = -z_coa-z_add; %搜索负半部分
+z_minus_max = min(-z_coa+z_add,0); %搜索负半部分
+z_gra = z_minus_min:z_peri:z_minus_max; %搜索的区间
+cost_minus = nan*ones(size(z_gra)); %预先分配内存
+for ii=1:length(z_gra)
+    signal_gra = SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,z_gra(ii),system_pol); %计算信号
+    cost_minus(ii) = sum(abs(signal(valid)-signal_gra(valid)).^2,'all');%计算误差
+end
+[~,index]=min(cost_minus);
+
+z_coa_minus=z_gra(index); %粗网格修正粗定位结果
+
+hold on;
+plot(z_gra,cost_minus,'LineWidth',1.5,'Color',Color(1,:));
+scatter(z_gra(index),cost_minus(index),25,Color(2,:),'filled');
+hold off;
+toc;
+disp(['粗网格拟合法/正半轴:',num2str(z_coa_pos)]);
+disp(['粗网格拟合法/负半轴:',num2str(z_coa_minus)]);
+
+tic;
+z_add = 0.25; %扫描的上下范围
+z_min = max(z_coa_pos-z_add,0); %搜索的下限
+z_max = z_coa_pos+z_add; %搜索的上限
+z_minus_min = z_coa_minus-z_add; %搜索负半部分
+z_minus_max = min(z_coa_minus+z_add,0); %搜索负半部分
+z_peri = 1e-3; %1nm采样
+z_gra =[z_minus_min:z_peri:z_minus_max, z_min:z_peri:z_max]; %搜索的区间
 cost = nan*ones(size(z_gra)); %预先分配内存
 for ii=1:length(z_gra)
     signal_gra = SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,z_gra(ii),system_pol); %计算信号
