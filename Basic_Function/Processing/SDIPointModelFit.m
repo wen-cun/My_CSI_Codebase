@@ -61,7 +61,7 @@ function [z_pre,cost_pre]=SDIPointModelFit(signal,z_coa,valid,NA,vk0,vsk,r_Se,r_
     [~,index]=min(cost_neg);
     z_coa_neg=z_gra(index); %粗网格负半轴修正结果
     
-    z_add_fine = 0.25;
+    z_add_fine = 0.3;
     z_step_fine = 1e-3;
     
     % 正半轴细网格
