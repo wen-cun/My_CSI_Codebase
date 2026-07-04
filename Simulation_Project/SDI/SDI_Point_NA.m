@@ -54,7 +54,7 @@ ylabel('k/$\mu m^{-1}$','Interpreter','latex');
 xlabel('$\theta$/rad','Interpreter','latex');
 %% 选择偏振模式，生成光谱干涉信号
 system_pol = 'unpolar';%非偏振模式
-sample_dis = 0.432495;
+sample_dis = -5;
 signal=SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,sample_dis,system_pol);
 
 figure();
@@ -129,113 +129,95 @@ z_add = 2.5; %扫描的上范围
 z_min = max(z_coa-z_add,0); %搜索的下限
 z_max = z_coa+z_add; %搜索的上限
 z_peri = 2.5e-2; %50nm采样
-z_gra = z_min:z_peri:z_max; %搜索的区间
+
+z_minus_min = -z_coa-z_add; %搜索负半部分
+z_minus_max = min(-z_coa+z_add,0); %搜索负半部分
+
+z_gra = [z_minus_min:z_peri:z_minus_max,z_min:z_peri:z_max]; %搜索的区间
 cost = nan*ones(size(z_gra)); %预先分配内存
 for ii=1:length(z_gra)
     signal_gra = SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,z_gra(ii),system_pol); %计算信号
     cost(ii) = sum(abs(signal(valid)-signal_gra(valid)).^2,'all');%计算误差
 end
-[~,index]=min(cost);
+toc;
 
-z_coa_pos=z_gra(index); %粗网格修正粗定位结果
+local_mask = islocalmin(cost,'FlatSelection','center','SamplePoints',z_gra); %判断是否为局部极小值
+idx_local = find(local_mask);
+
+% 防止严格单调或边缘最小导致没有检测到局部极小值
+[~,idx_global] = min(cost);
+
+if isempty(idx_local)
+    idx_local = idx_global;
+elseif ~ismember(idx_global,idx_local)
+    idx_local = [idx_local;idx_global];
+end
+
 figure();
 plot(z_gra,cost,'LineWidth',1.5,'Color',Color(1,:));
 hold on;
-scatter(z_gra(index),cost(index),25,Color(2,:),'filled');
+scatter(z_gra(local_mask),cost(local_mask),25,Color(2,:),'filled');
 hold off;
 defaultAxes(2);
+legend('Cost','LocalMin','EdgeColor','none');
 xlabel('z/$\mu$ m','Interpreter','latex');
 
-z_minus_min = -z_coa-z_add; %搜索负半部分
-z_minus_max = min(-z_coa+z_add,0); %搜索负半部分
-z_gra = z_minus_min:z_peri:z_minus_max; %搜索的区间
-cost_minus = nan*ones(size(z_gra)); %预先分配内存
-for ii=1:length(z_gra)
-    signal_gra = SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,z_gra(ii),system_pol); %计算信号
-    cost_minus(ii) = sum(abs(signal(valid)-signal_gra(valid)).^2,'all');%计算误差
-end
-[~,index]=min(cost_minus);
+% 按损失值排序
+[~,order] = sort(cost(idx_local),'ascend');
+idx_sorted = idx_local(order);
 
-z_coa_minus=z_gra(index); %粗网格修正粗定位结果
 
-hold on;
-plot(z_gra,cost_minus,'LineWidth',1.5,'Color',Color(1,:));
-scatter(z_gra(index),cost_minus(index),25,Color(2,:),'filled');
-hold off;
-toc;
-disp(['粗网格拟合法/正半轴:',num2str(z_coa_pos)]);
-disp(['粗网格拟合法/负半轴:',num2str(z_coa_minus)]);
+
 
 %% 精确定位，细网格搜索正负半轴分别进行细网格搜索
-z_add_fine = 0.3;
-z_step_fine = 1e-3;
 
-% 正半轴细网格
-z_pos_min = max(z_coa_pos-z_add_fine,0);
-z_pos_max = z_coa_pos+z_add_fine;
-z_fine_pos = z_pos_min:z_step_fine:z_pos_max;
+z_num = 6; %仅选取前六个极小值
 
-% 负半轴细网格
-z_neg_min = z_coa_minus-z_add_fine;
-z_neg_max = min(z_coa_minus+z_add_fine,0);
-z_fine_neg = z_neg_min:z_step_fine:z_neg_max;
-
-cost_fine_pos = nan(size(z_fine_pos));
-cost_fine_neg = nan(size(z_fine_neg));
-
-tic;
-
-% 正半轴细搜索
-for ii = 1:numel(z_fine_pos)
-
-    signal_model = SDIPointSignalGenerate( ...
-        NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm, ...
-        theta_array,z_fine_pos(ii),system_pol);
-
-    cost_fine_pos(ii) = sum( ...
-        abs(signal(valid)-signal_model(valid)).^2);
+disp('粗网格候选位置：');
+for ii=1:z_num
+    disp(num2str(z_gra(idx_sorted(ii))));
 end
 
-% 负半轴细搜索
-for ii = 1:numel(z_fine_neg)
+z_add_fine = 1.5*z_peri; %精确定位范围采用粗网格定义的1个半以内。
+z_step_fine = 1e-3;
+num_fine_half = ceil(z_add_fine/z_step_fine);
+fine_offsets = (-num_fine_half:num_fine_half)*z_step_fine;
 
-    signal_model = SDIPointSignalGenerate( ...
-        NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm, ...
-        theta_array,z_fine_neg(ii),system_pol);
 
-    cost_fine_neg(ii) = sum( ...
-        abs(signal(valid)-signal_model(valid)).^2);
+cost_cand = nan*ones(1,numel(fine_offsets)) ; %给每个候选位置损失函数分配内存
+
+z_para = nan*ones(1,z_num) ; %给每个候选位置抛物线位置分配内存
+cost_para = nan*ones(1,z_num) ; %给每个候选位置抛物线拟合误差分配内存
+
+tic;
+figure();
+for ii = 1:z_num
+    z_cand = fine_offsets + z_gra(idx_sorted(ii));
+    for jj = 1:numel(z_cand)
+        
+        signal_model = SDIPointSignalGenerate( ...
+            NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm, ...
+            theta_array,z_cand(jj),system_pol);
+        cost_cand(jj) = sum( ...
+            abs(signal(valid)-signal_model(valid)).^2);
+    end
+    plot(z_cand,cost_cand,'LineWidth',1.5,'Color',Color(1,:));
+    hold on;
+    [z_para(ii),cost_para(ii),~] = RefineMinimumByParabola(z_cand,cost_cand);
 end
 
 toc;
-figure();
-plot(z_fine_pos,cost_fine_pos,'LineWidth',1.5,'Color',Color(1,:));
-hold on;
-plot(z_fine_neg,cost_fine_neg,'LineWidth',1.5,'Color',Color(1,:));
-hold off;
-defaultAxes(2);
-xlabel('z/$\mu$ m','Interpreter','latex');
 
-[z_pos_refined,cost_pos_refined,pos_valid] = ...
-    RefineMinimumByParabola(z_fine_pos,cost_fine_pos);
+[cost_pre,min_index] = min(cost_para); %确定最小抛物线候选中心
+z_pre = z_para(min_index); %精确搜索的结果
 
-[z_neg_refined,cost_neg_refined,neg_valid] = ...
-    RefineMinimumByParabola(z_fine_neg,cost_fine_neg);
 
-if cost_pos_refined <= cost_neg_refined
-    z_pre = z_pos_refined;
-    cost_pre = cost_pos_refined;
-    selected_branch = "positive";
-else
-    z_pre = z_neg_refined;
-    cost_pre = cost_neg_refined;
-    selected_branch = "negative";
-end
 
-disp(['选择分支: ',char(selected_branch)]);
 hold on;
 scatter(z_pre,cost_pre,25,Color(2,:),'filled');
 hold off;
+defaultAxes(2);
+xlabel('z/$\mu$ m','Interpreter','latex');
 %% 输出结果
 disp(['模型拟合法:',num2str(z_pre)]);
 %% 抛物线拟合的函数
