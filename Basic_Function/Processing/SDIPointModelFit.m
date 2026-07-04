@@ -44,10 +44,10 @@ function [z_pre,cost_pre]=SDIPointModelFit(signal,z_coa,valid,NA,vk0,vsk,r_Se,r_
     z_add = 2.5; %扫描的上范围
     z_min = max(z_coa-z_add,0); %搜索的下限
     z_max = z_coa+z_add; %搜索的上限
-    z_peri = 5e-2; %50nm采样
+    z_peri = 2.5e-2; %50nm采样
     z_gra = z_min:z_peri:z_max; %搜索的区间
     
-    cost_pos=CalcSeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_gra,signal,valid);
+    cost_pos=CalcSDISeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_gra,signal,valid);
     
     [~,index]=min(cost_pos);
     z_coa_pos=z_gra(index); %粗网格正半轴修正结果
@@ -56,7 +56,7 @@ function [z_pre,cost_pre]=SDIPointModelFit(signal,z_coa,valid,NA,vk0,vsk,r_Se,r_
     z_minus_max = min(-z_coa+z_add,0); %搜索负半部分
     z_gra = z_minus_min:z_peri:z_minus_max; %搜索的区间
     
-    cost_neg=CalcSeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_gra,signal,valid);
+    cost_neg=CalcSDISeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_gra,signal,valid);
     
     [~,index]=min(cost_neg);
     z_coa_neg=z_gra(index); %粗网格负半轴修正结果
@@ -68,14 +68,14 @@ function [z_pre,cost_pre]=SDIPointModelFit(signal,z_coa,valid,NA,vk0,vsk,r_Se,r_
     z_pos_min = max(z_coa_pos-z_add_fine,0);
     z_pos_max = z_coa_pos+z_add_fine;
     z_fine_pos = z_pos_min:z_step_fine:z_pos_max;
-    cost_fine_pos=CalcSeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_fine_pos,signal,valid);
+    cost_fine_pos=CalcSDISeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_fine_pos,signal,valid);
     
     
     % 负半轴细网格
     z_neg_min = z_coa_neg-z_add_fine;
     z_neg_max = min(z_coa_neg+z_add_fine,0);
     z_fine_neg = z_neg_min:z_step_fine:z_neg_max;
-    cost_fine_neg=CalcSeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_fine_neg,signal,valid);
+    cost_fine_neg=CalcSDISeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_fine_neg,signal,valid);
     
     [z_pos_refined,cost_pos_refined,~] = ...
         RefineMinimumByParabola(z_fine_pos,cost_fine_pos);
