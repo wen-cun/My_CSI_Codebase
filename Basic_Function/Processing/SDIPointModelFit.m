@@ -41,54 +41,53 @@ function [z_pre,cost_pre]=SDIPointModelFit(signal,z_coa,valid,NA,vk0,vsk,r_Se,r_
 %     [z_pre,cost_pre]=SDIPointModelFit(signal,z_coa,valid,NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol)
 
   
-    z_add = 2.5; %扫描的上范围
-    z_min = max(z_coa-z_add,0); %搜索的下限
-    z_max = z_coa+z_add; %搜索的上限
-    z_peri = 2.5e-2; %50nm采样
-    z_gra = z_min:z_peri:z_max; %搜索的区间
+z_add = 2.5; %扫描的上范围
+z_min = max(z_coa-z_add,0); %搜索的下限
+z_max = z_coa+z_add; %搜索的上限
+z_peri = 2.5e-2; %50nm采样
+
+z_minus_min = -z_coa-z_add; %搜索负半部分
+z_minus_max = min(-z_coa+z_add,0); %搜索负半部分
+
+z_gra = [z_minus_min:z_peri:z_minus_max,z_min:z_peri:z_max]; %搜索的区间
+
+cost = CalcSDISeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_gra,signal,valid);
+
+local_mask = islocalmin(cost,'FlatSelection','center','SamplePoints',z_gra); %判断是否为局部极小值
+idx_local = find(local_mask);
+
+% 防止严格单调或边缘最小导致没有检测到局部极小值
+[~,idx_global] = min(cost);
+
+if isempty(idx_local)
+    idx_local = idx_global;
+elseif ~ismember(idx_global,idx_local)
+    idx_local = [idx_local;idx_global];
+end
+% 按损失值排序
+[~,order] = sort(cost(idx_local),'ascend');
+idx_sorted = idx_local(order);
     
-    cost_pos=CalcSDISeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_gra,signal,valid);
-    
-    [~,index]=min(cost_pos);
-    z_coa_pos=z_gra(index); %粗网格正半轴修正结果
-    
-    z_minus_min = -z_coa-z_add; %搜索负半部分
-    z_minus_max = min(-z_coa+z_add,0); %搜索负半部分
-    z_gra = z_minus_min:z_peri:z_minus_max; %搜索的区间
-    
-    cost_neg=CalcSDISeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_gra,signal,valid);
-    
-    [~,index]=min(cost_neg);
-    z_coa_neg=z_gra(index); %粗网格负半轴修正结果
-    
-    z_add_fine = 0.3;
-    z_step_fine = 1e-3;
-    
-    % 正半轴细网格
-    z_pos_min = max(z_coa_pos-z_add_fine,0);
-    z_pos_max = z_coa_pos+z_add_fine;
-    z_fine_pos = z_pos_min:z_step_fine:z_pos_max;
-    cost_fine_pos=CalcSDISeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_fine_pos,signal,valid);
-    
-    
-    % 负半轴细网格
-    z_neg_min = z_coa_neg-z_add_fine;
-    z_neg_max = min(z_coa_neg+z_add_fine,0);
-    z_fine_neg = z_neg_min:z_step_fine:z_neg_max;
-    cost_fine_neg=CalcSDISeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_fine_neg,signal,valid);
-    
-    [z_pos_refined,cost_pos_refined,~] = ...
-        RefineMinimumByParabola(z_fine_pos,cost_fine_pos);
-    
-    [z_neg_refined,cost_neg_refined,~] = ...
-        RefineMinimumByParabola(z_fine_neg,cost_fine_neg);
-    
-    if cost_pos_refined <= cost_neg_refined
-        z_pre = z_pos_refined;
-        cost_pre = cost_pos_refined;
-    else
-        z_pre = z_neg_refined;
-        cost_pre = cost_neg_refined;
-    end
+z_num = 6; %仅选取前六个极小值
+
+z_add_fine = 1.5*z_peri; %精确定位范围采用粗网格定义的1个半以内。
+z_step_fine = 1e-3;
+num_fine_half = ceil(z_add_fine/z_step_fine);
+fine_offsets = (-num_fine_half:num_fine_half)*z_step_fine;
+
+
+
+z_para = nan*ones(1,z_num) ; %给每个候选位置抛物线位置分配内存
+cost_para = nan*ones(1,z_num) ; %给每个候选位置抛物线拟合误差分配内存
+
+for ii = 1:z_num
+    z_cand = fine_offsets + z_gra(idx_sorted(ii));
+    cost_cand = CalcSDISeekCost(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol,z_cand,signal,valid);
+    [z_para(ii),cost_para(ii),~] = RefineMinimumByParabola(z_cand,cost_cand);
+end
+
+
+[cost_pre,min_index] = min(cost_para); %确定最小抛物线候选中心
+z_pre = z_para(min_index); %精确搜索的结果    
     
 end
