@@ -124,12 +124,12 @@ figure();
 plot(z_scan_pur,signal,'LineWidth',1.5,'Color',GetColor(1,1));
 defaultAxes(2);
 xlabel('z/$\mu m$','Interpreter','latex');
-%% 仅恢复部分扫描序列
-z_thr = 0.5; %在与0距离为z_thr的序列不完全可靠
-z_scan_un = z_scan; %不可靠的序列
-val = abs(z_scan_un)<z_thr;
-% z_scan_un(val) = z_scan_un(val) + 0.01*rand(1,sum(val)); %带部分噪声
-z_scan_un(val) = nan; %全为nan值
+%% 恢复序列带一定噪声
+% z_thr = 0.5; %在与0距离为z_thr的序列不完全可靠
+% z_scan_un = z_scan; %不可靠的序列
+% val = abs(z_scan_un)<z_thr;
+z_scan_un = z_scan + 0.001*rand(size(z_scan)); %带部分噪声
+% z_scan_un(val) = nan; %全为nan值
 
 % z_bol = rand(size(z_scan_un(val)));
 % z_bol(z_bol <= 0.5) = -1;
@@ -174,91 +174,101 @@ xlabel('z/$\mu m$','Interpreter','latex');
 disp(['预设高度h:',num2str(sample_dis)]);
 disp(['粗定位法:',num2str(d_coa)]);
 
-%%  精确定位 模型拟合
-% 粗定位误差控制在正负2um内
-% 粗细网格结合法
-d_add = 2; %多扫描的范围
-d_peri = 5e-2; %采样周期
-d_min = d_coa-d_add;
-d_max = d_coa+d_add;
-d_gra = d_min : d_peri : d_max; %搜索范围
-cost = nan*ones(size(d_gra)); %预先分配内存
+%% 精确定位,粗网格修正粗定位结果
 tic;
+d_add = 2.5; %扫描的上范围
+d_min = max(d_coa-d_add,0); %搜索的下限
+d_max = d_coa+d_add; %搜索的上限
+d_peri = 1e-2; %10nm采样
+
+d_minus_min = -d_coa-d_add; %搜索负半部分
+z_minus_max = min(-d_coa+d_add,0); %搜索负半部分
+
+d_gra = [d_minus_min:d_peri:z_minus_max,d_min:d_peri:d_max]; %搜索的区间
+cost = nan*ones(size(d_gra)); %预先分配内存
 for ii=1:length(d_gra)
-    signal_gra = CSIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,z_scan_un,theta_array,d_gra(ii),system_pol);%生成CSI信号
+    signal_gra = CSIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,z_scan_un,theta_array,d_gra(ii),system_pol); %计算信号
     signal_gra = signal_gra(:);
     signal_gra = signal_gra-mean(signal_gra,'omitnan'); %去掉直流
     cost(ii) = sum(abs(signal-signal_gra).^2,'all','omitnan');%计算误差
 end
 toc;
-[~,index]=min(cost);
+
+local_mask = islocalmin(cost,'FlatSelection','center','SamplePoints',d_gra); %判断是否为局部极小值
+idx_local = find(local_mask);
+
+% 防止严格单调或边缘最小导致没有检测到局部极小值
+[~,idx_global] = min(cost);
+
+if isempty(idx_local)
+    idx_local = idx_global;
+elseif ~ismember(idx_global,idx_local)
+    idx_local = [idx_local;idx_global];
+end
+
 figure();
 plot(d_gra,cost,'LineWidth',1.5,'Color',Color(1,:));
 hold on;
-scatter(d_gra(index),cost(index),25,Color(2,:),'filled');
+scatter(d_gra(local_mask),cost(local_mask),25,Color(2,:),'filled');
 hold off;
 defaultAxes(2);
+legend('Cost','LocalMin','EdgeColor','none');
 xlabel('z/$\mu$ m','Interpreter','latex');
-d_coa=d_gra(index); %粗网格修正粗定位结果
-disp(['粗网格拟合法:',num2str(d_coa)]);
 
-d_add = 0.25; %多扫描的范围
-d_peri = 1e-3; %采样周期
-d_min = d_coa-d_add;
-d_max = d_coa+d_add;
-d_gra = d_min : d_peri : d_max; %搜索范围
-cost = nan*ones(size(d_gra)); %预先分配内存
+% 按损失值排序
+[~,order] = sort(cost(idx_local),'ascend');
+idx_sorted = idx_local(order);
+
+
+
+
+%% 精确定位，细网格搜索正负半轴分别进行细网格搜索
+
+d_num = 6; %仅选取前六个极小值
+
+disp('粗网格候选位置：');
+for ii=1:d_num
+    disp(num2str(d_gra(idx_sorted(ii))));
+end
+
+d_add_fine = 1.5*d_peri; %精确定位范围采用粗网格定义的1个半以内。
+d_step_fine = 1e-3;
+num_fine_half = ceil(d_add_fine/d_step_fine);
+fine_offsets = (-num_fine_half:num_fine_half)*d_step_fine;
+
+
+cost_cand = nan*ones(1,numel(fine_offsets)) ; %给每个候选位置损失函数分配内存
+
+d_para = nan*ones(1,d_num) ; %给每个候选位置抛物线位置分配内存
+cost_para = nan*ones(1,d_num) ; %给每个候选位置抛物线拟合误差分配内存
+
 tic;
-for ii=1:length(d_gra)
-    signal_gra = CSIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,z_scan_un,theta_array,d_gra(ii),system_pol);%生成CSI信号
+figure();
+for ii = 1:d_num
+    d_cand = fine_offsets + d_gra(idx_sorted(ii));
+    for jj = 1:numel(d_cand)
+     signal_gra = CSIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,z_scan_un,theta_array,d_cand(jj),system_pol); %计算信号
     signal_gra = signal_gra(:);
     signal_gra = signal_gra-mean(signal_gra,'omitnan'); %去掉直流
-    cost(ii) = sum(abs(signal-signal_gra).^2,'all','omitnan');%计算误差
+    cost_cand(jj) = sum(abs(signal-signal_gra).^2,'all','omitnan');%计算误差
+        
+    end
+    plot(d_cand,cost_cand,'LineWidth',1.5,'Color',Color(1,:));
+    hold on;
+    [d_para(ii),cost_para(ii),~] = RefineMinimumByParabola(d_cand,cost_cand);
 end
+
 toc;
 
-figure();
-plot(d_gra,cost,'LineWidth',1.5,'Color',Color(1,:));
-defaultAxes(2);
-xlabel('d/$\mu$ m','Interpreter','latex');
+[cost_pre,min_index] = min(cost_para); %确定最小抛物线候选中心
+d_pre = d_para(min_index); %精确搜索的结果
 
-[~,min_index] = min(cost); %误差最小值对应的索引
-d_pre = d_gra(min_index);
-cost_pre = cost(min_index);
 
-if min_index == 1 || min_index == length(d_gra)
-    warning('误差最小值位于搜索边界，建议扩大 搜索范围');
-else
-    %抛物线三点拟合
-    % 最小值左右相邻的三个代价函数值
-    cost_left   = cost(min_index-1);
-    cost_center = cost(min_index);
-    cost_right  = cost(min_index+1);
-    
-    denominator = cost_left - 2*cost_center + cost_right;
-    
-    % denominator>0 表示局部抛物线开口向上
-    if isfinite(denominator) && denominator > eps(max(abs(cost)))
-        delta_index = 0.5 * ...
-            (cost_left - cost_right) / denominator;
-        
-        % 顶点原则上应该落在相邻两个采样点之间
-        if abs(delta_index) <= 1
-            d_pre = d_gra(min_index) + delta_index*d_peri;
-            
-            % 抛物线顶点对应的代价值
-            cost_pre = cost_center ...
-                - (cost_left-cost_right)^2/(8*denominator);
-        else
-            warning('抛物线顶点超出相邻采样区间，使用离散最小值。');
-        end
-    else
-        warning('局部代价函数不满足开口向上的抛物线条件，使用离散最小值。');
-    end
-end
 
 hold on;
 scatter(d_pre,cost_pre,25,Color(2,:),'filled');
 hold off;
+defaultAxes(2);
+xlabel('z/$\mu$ m','Interpreter','latex');
 
 disp(['细网格拟合法:',num2str(d_pre)]);
