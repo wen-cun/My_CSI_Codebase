@@ -44,7 +44,7 @@ function [z_pre,cost_pre]=SDIPointModelFit(signal,z_coa,valid,NA,vk0,vsk,r_Se,r_
 z_add = 2.5; %扫描的上范围
 z_min = max(z_coa-z_add,0); %搜索的下限
 z_max = z_coa+z_add; %搜索的上限
-z_peri = 2.5e-2; %50nm采样
+z_peri = 1e-2; %10nm采样
 
 z_minus_min = -z_coa-z_add; %搜索负半部分
 z_minus_max = min(-z_coa+z_add,0); %搜索负半部分
