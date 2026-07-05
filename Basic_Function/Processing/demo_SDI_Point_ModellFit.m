@@ -30,7 +30,7 @@ plot(vk0,vsk,'LineWidth',1.5,'Color',GetColor(1,1));
 defaultAxes(2);
 xlabel('k/$\mu m^{-1}$','Interpreter','latex');
 %% 定义角度
-NA = 0.3; %系统NA 
+NA = 0.4; %系统NA 
 theta_max=asin(NA); %最大NA对应的空气中光线角度theta
 theta_peri=0.01; %角度theta的采样周期
 theta_array = 0:theta_peri:theta_max; %theta采样数组
@@ -54,7 +54,7 @@ ylabel('k/$\mu m^{-1}$','Interpreter','latex');
 xlabel('$\theta$/rad','Interpreter','latex');
 %% 选择偏振模式，生成光谱干涉信号
 system_pol = 'unpolar';%非偏振模式
-sample_dis = -5;
+sample_dis = 9.0004;
 signal=SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,sample_dis,system_pol);
 
 figure();
@@ -128,7 +128,7 @@ tic;
 z_add = 2.5; %扫描的上范围
 z_min = max(z_coa-z_add,0); %搜索的下限
 z_max = z_coa+z_add; %搜索的上限
-z_peri = 2.5e-2; %50nm采样
+z_peri = 1e-2; %10nm采样
 
 z_minus_min = -z_coa-z_add; %搜索负半部分
 z_minus_max = min(-z_coa+z_add,0); %搜索负半部分
@@ -374,7 +374,7 @@ function [z_pre,cost_pre]=SDIPointModelFit(signal,z_coa,valid,NA,vk0,vsk,r_Se,r_
 z_add = 2.5; %扫描的上范围
 z_min = max(z_coa-z_add,0); %搜索的下限
 z_max = z_coa+z_add; %搜索的上限
-z_peri = 2.5e-2; %50nm采样
+z_peri = 1e-2; %10nm采样
 
 z_minus_min = -z_coa-z_add; %搜索负半部分
 z_minus_max = min(-z_coa+z_add,0); %搜索负半部分
