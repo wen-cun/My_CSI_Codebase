@@ -30,7 +30,7 @@ plot(vk0,vsk,'LineWidth',1.5,'Color',GetColor(1,1));
 defaultAxes(2);
 xlabel('k/$\mu m^{-1}$','Interpreter','latex');
 %% 定义角度
-NA = 0.4; %系统NA 
+NA = 0.3; %系统NA 
 theta_max=asin(NA); %最大NA对应的空气中光线角度theta
 theta_peri=0.01; %角度theta的采样周期
 theta_array = 0:theta_peri:theta_max; %theta采样数组
