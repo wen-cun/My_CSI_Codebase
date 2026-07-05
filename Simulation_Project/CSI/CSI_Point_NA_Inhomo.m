@@ -47,20 +47,21 @@ figure();
 plot(vib_fre(vib_val),vib_pow(vib_val),'LineWidth',1.5,'Color',GetColor(1,1));
 defaultAxes(2);
 xlabel('x/Hz');
-%% 生成光源
-fre = make_axis_freq(length(z_scan),d_peri,'101');
-fre = fre(fre> 2/1.1);%只选取大于1.1的部分；
-vk0 = (fre /2)';  %仿真中仍采用该顺序生成光源采样点波数
-
+%% 定义光源
+lam_peri = 3e-4; %波长采样周期,um制
+lam_lim = [0.3,1.1]; %波长采样范围
+lam = lam_lim(1):lam_peri:lam_lim(2); %波长采样
+lam = lam(:); %转为列向量
+vk0 = 1./lam; %转为波数
 vsk_ini = gen_lightsource(vk0,1);%获取光源信号
-vsk = vsk_ini./(vk0.^2); %波长波数域转换
-vsk = vsk./(max(abs(vsk))); %归一化光谱
+vsk = vsk_ini./(vk0.^2);%波长波数域转换
+vsk=vsk./(max(abs(vsk)));
 
 figure();
 tiledlayout(3,1);
 
 nexttile;
-plot(1./vk0,vsk_ini,'LineWidth',1.5,'Color',GetColor(1,1));
+plot(lam,vsk_ini,'LineWidth',1.5,'Color',GetColor(1,1));
 defaultAxes(2);
 xlabel('$\lambda$/$\mu$m','Interpreter','latex');
 
@@ -106,7 +107,7 @@ sample_stru = {'Si',inf}; %样品结构
 system_pol = 'unpolar';%非偏振模式
 % system_pol = 'ideal';%理想偏振模式
 
-sample_dis = 0;%样品与参考镜之间的距离;
+sample_dis = 3;%样品与参考镜之间的距离;
 
 signal = CSIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,z_scan,theta_array,sample_dis,system_pol);%生成CSI信号
 
@@ -176,7 +177,7 @@ disp(['粗定位法:',num2str(d_coa)]);
 
 %% 精确定位,粗网格修正粗定位结果
 tic;
-d_add = 2.5; %扫描的上范围
+d_add = 0.5; %扫描的上范围
 d_min = max(d_coa-d_add,0); %搜索的下限
 d_max = d_coa+d_add; %搜索的上限
 d_peri = 1e-2; %10nm采样
