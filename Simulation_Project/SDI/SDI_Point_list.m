@@ -47,7 +47,6 @@ figure();
 plot(vib_fre(vib_val),vib_pow(vib_val),'LineWidth',1.5,'Color',GetColor(1,1));
 defaultAxes(2);
 xlabel('x/Hz');
-%% 
 %% 定义光源
 lam_peri = 3e-4; %波长采样周期,um制
 lam_lim = [0.3,1.1]; %波长采样范围
@@ -76,7 +75,7 @@ plot(vk0,vsk,'LineWidth',1.5,'Color',GetColor(1,1));
 defaultAxes(2);
 xlabel('k/$\mu m^{-1}$','Interpreter','latex');
 %% 定义角度
-NA = 0.3; %系统NA 
+NA = 0.4; %系统NA 
 theta_max=asin(NA); %最大NA对应的空气中光线角度theta
 theta_peri=0.01; %角度theta的采样周期
 theta_array = 0:theta_peri:theta_max; %theta采样数组
@@ -88,7 +87,7 @@ sample_stru = {'Si',inf}; %样品结构
 %% 参考镜反射率
 [r_Me,r_Mm] = CalcMirrorAmplitudeReflectivity(vk0,theta_array); %计算参考镜TE场、TM场反射率号
 %% 选择偏振模式，生成光谱干涉信号
-system_pol = 'ideal';%非偏振模式
+system_pol = 'unpolar';%非偏振模式
 
 tic;
 signal=nan*ones(length(vk0),length(z_scan));%信号序列，每一列代表指定离焦量位移下的SDI信号
@@ -111,32 +110,21 @@ defaultAxes(3);
 ylabel('$\lambda$/$\mu$m','Interpreter','latex');
 %% 粗细拟合恢复扫描序列
 z_scan_rec = nan*ones(size(z_scan)); %恢复的扫描序列，预先分配内存
-
+source_thr = 0.05; %仅选取光源强度在最大值0.05以上的值进行粗略定位，以降低噪声
+valid = vsk_ini > source_thr*max(vsk_ini);
 tic;
 for ii=1:length(z_scan_rec)
     if mod(ii,10)==0
         disp(['正在计算',num2str(ii),'/',num2str(length(z_scan_rec))]);
     end
-    [z_coa,rsquare] = SDIPointModulFit(signal(:,ii),lam,vsk_ini,NA);
-    z_scan_rec(ii) = SDIPointModelFit(signal(:,ii),z_coa,rsquare,NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol);
+    z_coa = SDIPointModulFit(signal(:,ii),lam,vsk_ini,valid,NA);
+    z_scan_rec(ii) = SDIPointModelFit(signal(:,ii),z_coa,valid,NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol);
     
 end
 toc;
 
-figure();
-scatter(z_scan,z_scan_rec,25,GetColor(1,1),'filled');
-defaultAxes(2);
-xlabel('z/$\mu$m','Interpreter','latex');
-ylabel('z$_{rec}$/$\mu$m','Interpreter','latex');
-%% 对噪声进行恢复
-z_thr = 0.5; %对abs(z)<z_thr进行估计其符号
-for ii=1:length(z_scan_rec)
-    if abs(z_scan_rec(ii)) > z_thr
-        if z_scan_pur(ii) < 0
-            z_scan_rec(ii) = -z_scan_rec(ii); %负离焦
-        end
-    end
-end
+vib_rec = z_scan_rec-z_scan_pur; %振动噪声
+%% 展示结果
 
 figure();
 scatter(z_scan,z_scan_rec,25,GetColor(1,1),'filled');
@@ -144,10 +132,12 @@ defaultAxes(2);
 xlabel('z/$\mu$m','Interpreter','latex');
 ylabel('z$_{rec}$/$\mu$m','Interpreter','latex');
 
-vib_rec = z_scan_rec-z_scan_pur; %恢复出来的噪声
-
 figure();
-scatter(z_scan,vib_rec,25,GetColor(1,1),'filled');
+plot(z_scan,z_scan-z_scan_rec,'LineWidth',1.5,'Color',GetColor(1,1));
 defaultAxes(2);
 xlabel('z/$\mu$m','Interpreter','latex');
-ylabel('z$_{rec}$/$\mu$m','Interpreter','latex');
+
+figure();
+plot(t,vib_rec,'LineWidth',1.5,'Color',GetColor(1,1));
+defaultAxes(2);
+xlabel('z/$\mu$m','Interpreter','latex');
