@@ -8,7 +8,7 @@ lam_lim = [0.3,1.1]; %波长采样范围
 lam = lam_lim(1):lam_peri:lam_lim(2); %波长采样
 lam = lam(:); %转为列向量
 vk0 = 1./lam; %转为波数
-vsk_ini = gen_lightsource(vk0,1);%获取光源信号
+vsk_ini = gen_lightsource(vk0,4);%获取光源信号
 vsk = vsk_ini./(vk0.^2);%波长波数域转换
 vsk=vsk./(max(abs(vsk)));
 %% 定义角度
@@ -23,14 +23,16 @@ sample_stru = {'Si',inf}; %样品结构
 [r_Se,r_Sm] = CalcSampleAmplitudeReflectivity(vk0,theta_array,sample_stru); %计算样品TE场、TM场反射率
 %% 参考镜反射率
 [r_Me,r_Mm] = CalcMirrorAmplitudeReflectivity(vk0,theta_array); %计算参考镜TE场、TM场反射率号
-%% 选择偏振模式，生成白光干涉信号
+%% 选择偏振模式，生成光谱干涉信号
 system_pol = 'unpolar';%非偏振模式
-sample_dis=6;
+sample_dis=5;
 signal=SDIPointSignalGenerate(NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,sample_dis,system_pol);
 signal_pur=signal;
 
 num_meas = 20; %重复测量的次数
 z_pre = nan*ones(num_meas,1); %预先分配内存
+source_thr = 0.05; %仅选取光源强度在最大值0.05以上的值进行粗略定位，以降低噪声
+valid = vsk_ini > source_thr*max(vsk_ini);
 
 tic;
 for ii=1:num_meas
@@ -38,8 +40,8 @@ disp(['正在计算:',num2str(ii),'/',num2str(num_meas)]);
 SNR = 40; %40dB的噪声
 signal = awgn(signal_pur,SNR,'measured');
 signal = signal/max(abs(signal)); %归一化
-[z_coa,rsquare] = SDIPointModulFit(signal,lam,vsk_ini,NA);
-z_pre(ii) = SDIPointModelFit(signal,z_coa,rsquare,NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol);
+z_coa = SDIPointModulFit(signal,lam,vsk_ini,valid,NA);
+z_pre(ii) = SDIPointModelFit(signal,z_coa,valid,NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol);
 end
 toc;
 %% 展示结果
