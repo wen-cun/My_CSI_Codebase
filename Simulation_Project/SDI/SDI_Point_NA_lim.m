@@ -12,7 +12,7 @@ vsk_ini = gen_lightsource(vk0,1);%获取光源信号
 vsk = vsk_ini./(vk0.^2);%波长波数域转换
 vsk=vsk./(max(abs(vsk)));
 %% 定义角度
-NA = 0.3; %系统NA 
+NA = 0.4; %系统NA 
 theta_max=asin(NA); %最大NA对应的空气中光线角度theta
 theta_peri=0.01; %角度theta的采样周期
 theta_array = 0:theta_peri:theta_max; %theta采样数组
@@ -25,7 +25,9 @@ sample_stru = {'Si',inf}; %样品结构
 [r_Me,r_Mm] = CalcMirrorAmplitudeReflectivity(vk0,theta_array); %计算参考镜TE场、TM场反射率号
 %% 选择偏振模式，生成白光干涉信号
 system_pol = 'unpolar';%非偏振模式
-sample_dis=[0:0.05:1.1,1.5:0.5:10,10.1:0.1:11];
+sample_dis=[-11:0.1:-10.1,-10:0.5:-1.5,-1.1:0.1:1.1,1.5:0.5:10,10.1:0.1:11];
+source_thr = 0.05; %仅选取光源强度在最大值0.05以上的值进行粗略定位，以降低噪声
+valid = vsk_ini > source_thr*max(vsk_ini);
 z_pre = nan*ones(size(sample_dis)); %预先分配内存
 tic;
 for ii=1:length(sample_dis)
@@ -34,8 +36,8 @@ for ii=1:length(sample_dis)
     SNR = 40; %40dB的噪声
     signal = awgn(signal,SNR,'measured');
     signal = signal/max(abs(signal)); %归一化
-    [z_coa,rsquare] = SDIPointModulFit(signal,lam,vsk_ini,NA);
-    z_pre(ii) = SDIPointModelFit(signal,z_coa,rsquare,NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol);
+    z_coa = SDIPointModulFit(signal,lam,vsk_ini,valid,NA);
+    z_pre(ii) = SDIPointModelFit(signal,z_coa,valid,NA,vk0,vsk,r_Se,r_Sm,r_Me,r_Mm,theta_array,system_pol);
 end
 toc;
 %% 展示结果
