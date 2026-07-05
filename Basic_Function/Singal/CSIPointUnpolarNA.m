@@ -28,19 +28,77 @@ function signal=CSIPointUnpolarNA(vk0,vsk,theta_array,r_Se,r_Sm,r_Me,r_Mm,z_scan
 %     sample_dis=3;
 %     signal=CSIPointUnpolarNA(vk0,vsk,theta_array,r_Se,r_Sm,r_Me,r_Mm,z_scan,sample_dis)
 
-vk0_mat = repmat(vk0,1,length(theta_array));
-vsk_mat = repmat(vsk,1,length(theta_array)); %将列向量的光谱数据复制为多列的矩阵
-theta_mat = repmat(theta_array,length(vk0),1);
-inter_D = vsk_mat.*(abs(r_Se).^2+abs(r_Sm).^2+abs(r_Me).^2+abs(r_Mm).^2).*sin(theta_mat).*cos(theta_mat);%干涉的直流项
-I_D = sum(inter_D,'all'); %光强直流项
+% 统一数据方向
+vk0 = vk0(:);
+vsk = vsk(:);
+theta_array = theta_array(:).';
 
-signal = nan*ones(size(z_scan)); %预先分配内存
-inter_A = vsk_mat.*(r_Se.*conj(r_Me)+r_Sm.*conj(r_Mm)).*sin(theta_mat).*cos(theta_mat); %干涉的交流项
-for ii = 1:length(z_scan)
-    phase = exp(1i*4*pi.*vk0_mat.*cos(theta_mat).*(z_scan(ii)-sample_dis));
-    signal(ii) = I_D + 2*real(sum(inter_A.*phase,'all'));
+z_shape = size(z_scan);
+z_scan = z_scan(:).';
+
+N = numel(vk0);
+M = numel(theta_array);
+
+% 基本维度检查
+if numel(vsk) ~= N
+    error('vk0和vsk的长度不一致。');
 end
 
-signal = signal./max(abs(signal),[],'all'); %信号归一化
+expected_size = [N,M];
+
+if ~isequal(size(r_Se),expected_size) || ...
+   ~isequal(size(r_Sm),expected_size) || ...
+   ~isequal(size(r_Me),expected_size) || ...
+   ~isequal(size(r_Mm),expected_size)
+
+    error('反射率矩阵尺寸应为N×M。');
+end
+
+%% 预计算不随扫描位置变化的量
+
+cos_theta = cos(theta_array);
+angular_weight = sin(theta_array).*cos_theta;
+
+% N×M，使用隐式扩展
+weight_mat = vsk.*angular_weight;
+
+direct_term = ...
+    abs(r_Se).^2 + abs(r_Sm).^2 + ...
+    abs(r_Me).^2 + abs(r_Mm).^2;
+
+I_D = sum(weight_mat.*direct_term,'all');
+
+inter_A = weight_mat.*( ...
+    r_Se.*conj(r_Me) + ...
+    r_Sm.*conj(r_Mm));
+
+% N×M相位系数
+phase_factor = 4*pi.*vk0.*cos_theta;
+
+%% 逐扫描位置计算CSI信号
+
+signal = zeros(size(z_scan));
+
+for ii = 1:numel(z_scan)
+
+    phase = exp(1i*phase_factor.* ...
+        (z_scan(ii)-sample_dis));
+
+    signal(ii) = I_D + ...
+        2*real(sum(inter_A.*phase,'all'));
+end
+
+%% 归一化
+
+normalizer = max(abs(signal));
+
+if isfinite(normalizer) && normalizer > 0
+    signal = signal./normalizer;
+else
+    warning('CSI信号归一化因子无效。');
+end
+
+signal = reshape(signal,z_shape);
+
 end
 
